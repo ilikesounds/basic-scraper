@@ -2,6 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 import sys
 import re
+import geocoder
+import json
 
 INSPECTION_DOMAIN = 'http://info.kingcounty.gov'
 INSPECTION_PATH = '/health/ehs/foodsafety/inspections/Results.aspx'
@@ -46,22 +48,22 @@ def write_to_file(results):
     This helper function writes an input to a file called results.html.
     This function is called by the get_inspection_page function
     """
-    file = open('results.html', 'w')
+    file = open('inspection_page.html', 'w')
     file.write(str(results.encoding))
     file.write(str(results.content))
     file.close()
 
 
-def load_file(file_to_load):
+def load_inspection_page(file_to_load):
     """
-    This helper function loads an HTML file passed in as an argument. It returns
-    the content of the file as well as it's encoding.
+    This helper function loads an HTML file passed in as an argument. It
+    returns the content of the file as well as it's encoding.
     """
     file = open(file_to_load, 'r')
     encoding = file.readline()
-    content = file.read()
+    html = file.read()
     encoding = encoding[0:5]
-    return content, encoding
+    return html, encoding
 
 
 def parse_source(html, encoding='utf-8'):
@@ -95,7 +97,7 @@ def has_two_tds(elem):
 
 def clean_data(td):
     """
-    This function turns the the table data fed into it into well-formed strings.
+    This function turns the the table data fed into it into well-formed strings
     """
     data = td.string
     try:
@@ -156,19 +158,56 @@ def extract_score_data(elem):
     }
     return data
 
-if __name__ == '__main__':
+
+def generate_results(test=True):
     kwargs = {
         'Inspection_Start': '2/1/2013',
         'Inspection_End': '2/1/2015',
-        'Zip_Code': '98105'
+        'Zip_Code': '98109'
     }
-    if len(sys.argv) > 1 and sys.argv[1] == 'test':
-        html, encoding = load_file('results.html')
+    if test:
+        html, encoding = load_inspection_page('inspection_page.html')
     else:
         html, encoding = get_inspection_page(**kwargs)
     doc = parse_source(html, encoding)
     listings = extract_data_listings(doc)
-    for listing in listings[:5]:
+    for listing in listings:
         metadata = extract_restaurant_metadata(listing)
         score_data = extract_score_data(listing)
-        print score_data
+        metadata.update(score_data)
+        yield metadata
+
+
+def get_geojson(result):
+    address = " ".join(result.get('Address', ''))
+    if not address:
+        return None
+    geocoded = geocoder.google(address)
+    geojson = geocoded.geojson
+    inspection_data = {}
+    use_keys = (
+        'Business Name', 'Average Score', 'Total Inspections', 'High Score',
+        'Address',
+    )
+    for key, val in result.items():
+        if key not in use_keys:
+            continue
+        if isinstance(val, list):
+            val = " ".join(val)
+        inspection_data[key] = val
+    new_address = geojson['properties'].get('address')
+    if new_address:
+        inspection_data['Address'] = new_address
+    geojson['properties'] = inspection_data
+    return geojson
+
+if __name__ == '__main__':
+    import pprint
+    test = len(sys.argv) > 1 and sys.argv[1] == 'test'
+    total_result = {'type': 'FeatureCollection', 'features': []}
+    for result in generate_results(test):
+        geo_result = get_geojson(result)
+        pprint.pprint(geo_result)
+        total_result['features'].append(geo_result)
+    with open('my_map.json', 'w') as fh:
+        json.dump(total_result, fh)
