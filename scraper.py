@@ -26,6 +26,10 @@ INSPECTION_PARAMS = {
 
 
 def get_inspection_page(**kwargs):
+    """
+    This function will return a query page back from King County
+    Public Health Restaurant Inspection page and store it to results.html
+    """
     url = INSPECTION_DOMAIN + INSPECTION_PATH
     params = INSPECTION_PARAMS.copy()
     for key, val in kwargs.items():
@@ -38,6 +42,10 @@ def get_inspection_page(**kwargs):
 
 
 def write_to_file(results):
+    """
+    This helper function writes an input to a file called results.html.
+    This function is called by the get_inspection_page function
+    """
     file = open('results.html', 'w')
     file.write(str(results.encoding))
     file.write(str(results.content))
@@ -45,6 +53,10 @@ def write_to_file(results):
 
 
 def load_file(file_to_load):
+    """
+    This helper function loads an HTML file passed in as an argument. It returns
+    the content of the file as well as it's encoding.
+    """
     file = open(file_to_load, 'r')
     encoding = file.readline()
     content = file.read()
@@ -53,16 +65,28 @@ def load_file(file_to_load):
 
 
 def parse_source(html, encoding='utf-8'):
+    """
+    This function parses an html document fed into it using beautiful soup and
+    returns a parsed object back.
+    """
     parsed = BeautifulSoup(html, 'html5lib', from_encoding=encoding)
     return parsed
 
 
 def extract_data_listings(html):
+    """
+    This function uses RegEx to extrace the restaurant listings in the HTML doc
+    using the re library and returns all the divs in the doc by id.
+    """
     id_finder = re.compile(r'PR[\d]+~')
     return html.find_all('div', id=id_finder)
 
 
 def has_two_tds(elem):
+    """
+    This function checks to find all the table data html elements and returns
+    those elements
+    """
     is_tr = elem.name == 'tr'
     td_children = elem.find_all('td', recursive=False)
     has_two = len(td_children) == 2
@@ -70,6 +94,9 @@ def has_two_tds(elem):
 
 
 def clean_data(td):
+    """
+    This function turns the the table data fed into it into well-formed strings.
+    """
     data = td.string
     try:
         return data.strip(" \n:-")
@@ -78,6 +105,10 @@ def clean_data(td):
 
 
 def extract_restaurant_metadata(elem):
+    """
+    This function extracts the metadata of the restaurants in the parsed HTML
+    and returns if present, namt, address, city, state, lat, lng ... etc.
+    """
     metadata_rows = elem.find('tbody').find_all(
         has_two_tds, recursive=False
     )
