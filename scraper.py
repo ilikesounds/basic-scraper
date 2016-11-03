@@ -9,12 +9,12 @@ INSPECTION_DOMAIN = 'http://info.kingcounty.gov'
 INSPECTION_PATH = '/health/ehs/foodsafety/inspections/Results.aspx'
 INSPECTION_PARAMS = {
     'Output': 'W',
-    'Business_Name': "Ivar's Salmon House",
-    'Business_Address': '401 NE Northlake Way',
+    'Business_Name': "",
+    'Business_Address': '',
     'Longitude': '',
     'Latitude': '',
-    'City': 'Seattle',
-    'Zip_Code': '98105',
+    'City': '',
+    'Zip_Code': '',
     'Inspection_Type': 'All',
     'Inspection_Start': '',
     'Inspection_End': '',
@@ -159,7 +159,7 @@ def extract_score_data(elem):
     return data
 
 
-def generate_results(test=True):
+def generate_results(test=False):
     kwargs = {
         'Inspection_Start': '2/1/2013',
         'Inspection_End': '2/1/2015',
